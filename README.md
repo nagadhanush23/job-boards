@@ -154,6 +154,35 @@ This repository includes a dedicated in-repo architecture wiki in [`openwiki/`](
 
 ---
 
+## Exactly What to Run on a Fresh Clone
+
+```bash
+# 1. Clone your repository
+git clone https://github.com/nagadhanush23/job-boards.git
+cd job-boards
+
+# 2. Run the offline test suite (verifies everything in ~1 second)
+python test_job_boards.py
+# Output: ok (58 tests)
+
+# 3. Set your contact email (required etiquette for ATS/archive APIs)
+$env:JOB_SCRAPER_CONTACT="nagadhanushexcellencia@gmail.com"   # Windows PowerShell
+# export JOB_SCRAPER_CONTACT="nagadhanushexcellencia@gmail.com"  # macOS / Linux
+
+# 4. Run a live scrape
+# (Uses bundled boards.seed.json with 60 verified top tech companies)
+python job_boards.py --limit 10
+
+# 5. Transform all scraped jobs into the standardized JSON schema
+python standard_schema.py
+
+# 6. Launch the web UI
+python server.py
+# Open: http://localhost:8000
+```
+
+---
+
 ## Maintainer & Author
 
 **Naga Dhanush**  
