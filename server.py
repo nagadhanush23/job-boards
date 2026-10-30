@@ -76,6 +76,9 @@ class JobBoardsHandler(BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def handle_standard_job(self, params):
+        if not DB_PATH.exists():
+            return self.send_json({"error": "Database not found. Run job_boards.py first."}, 404)
+
         source_id = params.get("id", [""])[0].strip() or params.get("source_id", [""])[0].strip()
         source = params.get("source", ["ats"])[0].strip()
         if not source_id:
@@ -94,6 +97,9 @@ class JobBoardsHandler(BaseHTTPRequestHandler):
             con.close()
 
     def handle_standard_jobs(self, params):
+        if not DB_PATH.exists():
+            return self.send_json({"jobs": [], "total": 0, "page": 1, "pages": 0, "limit": 24})
+
         query = params.get("q", [""])[0].strip()
         company = params.get("company", [""])[0].strip()
         ats = params.get("ats", [""])[0].strip()
@@ -131,6 +137,10 @@ class JobBoardsHandler(BaseHTTPRequestHandler):
 
         con = get_db()
         try:
+            table_check = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='jobs_standard'").fetchone()
+            if not table_check:
+                return self.send_json({"jobs": [], "total": 0, "page": 1, "pages": 0, "limit": limit, "message": "Run standard_schema.py first"})
+
             (total,) = con.execute(f"SELECT COUNT(*) FROM jobs_standard {where_clause}", sql_params).fetchone()
             offset = (page - 1) * limit
             rows = con.execute(
@@ -153,7 +163,7 @@ class JobBoardsHandler(BaseHTTPRequestHandler):
 
     def handle_stats(self):
         if not DB_PATH.exists():
-            return self.send_json({"error": "Database not found. Run job_boards.py or seed_db.py first."}, 404)
+            return self.send_json({"error": "Database not found. Run job_boards.py first."}, 404)
 
         con = get_db()
         try:
