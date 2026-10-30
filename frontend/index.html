@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobBoards Explorer • Live ATS Analytics & Postings</title>
+  <meta name="description" content="Explore live job postings aggregated from Ashby, Greenhouse, and Lever boards with SQLite persistence.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Background Glow Accents -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-inner container">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="7" width="20" height="14" rx="3" ry="3"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">JobBoards<span class="brand-badge">SQLITE</span></div>
+          <div class="brand-subtitle">Ashby • Greenhouse • Lever Aggregator</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-pill" id="dbStatusIndicator">
+          <span class="status-dot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
+        <a href="/job-boards.standard.json" download="job-boards.standard.json" class="btn btn-outline" id="downloadSchemaBtn" title="Download all jobs in standardized schema format">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export Schema JSON
+        </a>
+        <button class="btn btn-outline" id="refreshStatsBtn" title="Refresh local data">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+          Sync Stats
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero & Analytics Cards -->
+    <section class="stats-grid">
+      <div class="stat-card" id="cardTotalJobs">
+        <div class="stat-header">
+          <span class="stat-label">Total Active Postings</span>
+          <span class="stat-icon icon-cyan">💼</span>
+        </div>
+        <div class="stat-value" id="statTotalJobs">—</div>
+        <div class="stat-desc">Accumulated in local SQLite database</div>
+      </div>
+
+      <div class="stat-card" id="cardCompanies">
+        <div class="stat-header">
+          <span class="stat-label">Active Companies</span>
+          <span class="stat-icon icon-purple">🏢</span>
+        </div>
+        <div class="stat-value" id="statCompanies">—</div>
+        <div class="stat-desc">Tech & high-growth leaders</div>
+      </div>
+
+      <div class="stat-card" id="cardRemote">
+        <div class="stat-header">
+          <span class="stat-label">Remote Opportunities</span>
+          <span class="stat-icon icon-emerald">🌐</span>
+        </div>
+        <div class="stat-value" id="statRemote">—</div>
+        <div class="stat-desc" id="statRemotePercent">—% of total positions</div>
+      </div>
+
+      <div class="stat-card" id="cardPlatforms">
+        <div class="stat-header">
+          <span class="stat-label">Platforms Tracked</span>
+          <span class="stat-icon icon-amber">⚡</span>
+        </div>
+        <div class="platform-bars">
+          <div class="platform-bar-item">
+            <span class="platform-tag tag-ashby">Ashby</span>
+            <span class="platform-count" id="statAshbyCount">—</span>
+          </div>
+          <div class="platform-bar-item">
+            <span class="platform-tag tag-greenhouse">Greenhouse</span>
+            <span class="platform-count" id="statGreenhouseCount">—</span>
+          </div>
+          <div class="platform-bar-item">
+            <span class="platform-tag tag-lever">Lever</span>
+            <span class="platform-count" id="statLeverCount">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls & Filters Section -->
+    <section class="controls-card">
+      <div class="search-row">
+        <div class="search-input-wrap">
+          <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search by job title, department, company, or keyword..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-btn" style="display: none;">✕</button>
+        </div>
+
+        <div class="view-switchers">
+          <button class="view-btn active" id="viewGridBtn" title="Grid View">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+          </button>
+          <button class="view-btn" id="viewTableBtn" title="Table View">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-group ats-filter-group">
+          <span class="filter-title">ATS:</span>
+          <div class="pill-group" id="atsPillGroup">
+            <button class="filter-pill active" data-ats="all">All</button>
+            <button class="filter-pill pill-ashby" data-ats="ashby">Ashby</button>
+            <button class="filter-pill pill-greenhouse" data-ats="greenhouse">Greenhouse</button>
+            <button class="filter-pill pill-lever" data-ats="lever">Lever</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="companySelect" class="filter-title">Company:</label>
+          <div class="select-wrapper">
+            <select id="companySelect">
+              <option value="">All Companies (All 42+)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label for="sortSelect" class="filter-title">Sort:</label>
+          <div class="select-wrapper">
+            <select id="sortSelect">
+              <option value="recent">Newest Published</option>
+              <option value="oldest">Oldest Published</option>
+              <option value="company">Company (A-Z)</option>
+              <option value="title">Title (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-group checkbox-filter">
+          <label class="toggle-control" for="remoteOnlyToggle">
+            <input type="checkbox" id="remoteOnlyToggle">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">Remote Only</span>
+          </label>
+        </div>
+
+        <button class="btn btn-ghost" id="resetFiltersBtn">Reset Filters</button>
+      </div>
+    </section>
+
+    <!-- Active Filters Summary & Count -->
+    <div class="results-header">
+      <div class="results-count-wrap">
+        <span class="results-highlight" id="resultsCount">Loading jobs...</span>
+      </div>
+      <div class="items-per-page">
+        <label for="limitSelect">Show:</label>
+        <select id="limitSelect">
+          <option value="24" selected>24</option>
+          <option value="48">48</option>
+          <option value="96">96</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Jobs Container (Grid or Table) -->
+    <div id="jobsGrid" class="jobs-grid"></div>
+
+    <div id="jobsTableWrap" class="table-container" style="display: none;">
+      <table class="jobs-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Job Title</th>
+            <th>ATS</th>
+            <th>Location</th>
+            <th>Workplace</th>
+            <th>Published</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <div class="empty-icon">🔍</div>
+      <h3 class="empty-title">No matching postings found</h3>
+      <p class="empty-desc">Try clearing your filters or searching with a broader title keyword.</p>
+      <button class="btn btn-primary" id="emptyResetBtn">Clear All Filters</button>
+    </div>
+
+    <!-- Pagination -->
+    <nav class="pagination-bar" id="paginationBar" style="display: none;">
+      <button class="page-btn" id="prevPageBtn" disabled>← Previous</button>
+      <div class="page-numbers" id="pageNumbers"></div>
+      <button class="page-btn" id="nextPageBtn">Next →</button>
+    </nav>
+  </main>
+
+  <!-- Job Detail Modal -->
+  <div class="modal-backdrop" id="jobModalBackdrop" style="display: none;">
+    <div class="modal-card" id="jobModal">
+      <div class="modal-header">
+        <div class="modal-company-group">
+          <span class="modal-company" id="modalCompany">Company</span>
+          <span class="ats-badge" id="modalAts">ATS</span>
+        </div>
+        <div class="modal-tab-group">
+          <button class="modal-tab active" id="modalTabOverview">Overview</button>
+          <button class="modal-tab" id="modalTabSchema">Standard Schema JSON</button>
+        </div>
+        <button class="modal-close" id="modalCloseBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modalOverviewContent">
+          <h2 class="modal-title" id="modalTitle">Job Title</h2>
+
+          <div class="modal-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Location</span>
+              <span class="meta-value" id="modalLocation">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Workplace Type</span>
+              <span class="meta-value" id="modalWorkplace">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Department</span>
+              <span class="meta-value" id="modalDepartment">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Experience Level</span>
+              <span class="meta-value" id="modalExpLevel">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Published At</span>
+              <span class="meta-value" id="modalPublished">—</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Unique Identity</span>
+              <span class="meta-value" id="modalIdentityKey">—</span>
+            </div>
+          </div>
+
+          <div class="modal-section-title">Detected Skills</div>
+          <div class="modal-skills-chips" id="modalSkillsChips"></div>
+
+          <div class="modal-raw-info" style="margin-top: 18px;">
+            <div class="raw-label">Origin Platform: <span id="modalId"></span></div>
+          </div>
+        </div>
+
+        <div id="modalSchemaContent" style="display: none;">
+          <div class="schema-code-header">
+            <span>JSON conforming to Standard Schema specification</span>
+            <button class="btn btn-outline" id="modalCopySchemaBtn" style="padding: 4px 10px; font-size: 0.75rem;">
+              Copy JSON
+            </button>
+          </div>
+          <pre class="schema-json-block"><code id="modalJsonCode">Loading schema JSON...</code></pre>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="modalCopyBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy Job Link
+        </button>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modalApplyBtn">
+          Apply on Company Board ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast" id="toast"></div>
+
+  <footer class="app-footer">
+    <div class="container footer-content">
+      <div>JobBoards Explorer • Powered by SQLite (<code>job-boards.db</code>)</div>
+      <div class="footer-links">
+        <span>Scraping Ashby • Greenhouse • Lever</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

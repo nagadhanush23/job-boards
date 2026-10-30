@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+
+# Environment configuration
+.env
+!.env.example
+
+# Nothing this tool writes belongs in the repo, and --out lets you name the output
+# anything, so deny by default and allow the one file that is genuinely source.
+#
+# boards.json in particular: a full --refresh-boards crawl discovers ~3,400 slugs,
+# which is effectively Ashby's customer list. Committing it would turn a scraping
+# tool into published competitive intelligence.
+*.csv
+*.json
+!boards.seed.json
+
+# Scrape database.
+*.db
+*.db-journal
+
+# OpenWiki scratch: a per-run planning file, not documentation.
+openwiki/_plan.md
